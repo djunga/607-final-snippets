@@ -1,0 +1,41 @@
+---
+title: "Untitled"
+author: "Tora Mullings"
+date: "5/4/2022"
+output: html_document
+---
+
+```{r}
+library(RedditExtractoR)
+library(RSelenium)
+library(rvest)
+library(netstat)
+library(tidyverse)
+library(XML)
+```
+
+```{r}
+rs_driver_object <- rsDriver(
+  browser = "firefox",
+  port = free_port()
+)
+```
+
+
+```{r}
+remDr <- rs_driver_object$client
+
+remDr$open()
+remDr$navigate('https://www.nasdaq.com/market-activity/stocks/aapl/historical')
+remDr$findElement(using='xpath', '//button[@aria-label="Click to show data for 6 months"]')$clickElement()
+
+```
+
+```{r}
+stocks.df <- remDr$getPageSource()[[1]] %>% 
+  read_html() %>%
+  html_table() %>% 
+  flatten() %>% 
+  data.frame()
+```
+

@@ -1,0 +1,44 @@
+---
+title: "Reddit extract"
+author: "Tora Mullings"
+date: "5/6/2022"
+output: html_document
+---
+```{r}
+library(RedditExtractoR)
+library(pushshiftR)
+```
+
+```{r}
+y <- getcontent <- get_reddit(
+  search_terms = "Tolkien",
+  page_threshold = 1,
+  cn_threshold = 2500
+)
+```
+
+
+```{r}
+x <- getPushshiftData(postType = "submission",
+                 size = 10,
+                 after = "1651885200",
+                 subreddit = "soccer",
+                 nest_level = 1)
+```
+
+
+## Functional
+```{r}
+# redditextractor          
+z <- find_thread_urls(
+  keywords = "AAPL",
+  sort_by = "new",
+  subreddit = "wallstreetbets",
+  period = "month"
+)
+```
+
+```{r}
+y <- get_thread_content(urls=z$url)
+```
+
