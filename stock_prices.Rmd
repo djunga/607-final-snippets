@@ -12,30 +12,101 @@ library(rvest)
 library(netstat)
 library(tidyverse)
 library(XML)
+library(hash)
 ```
 
 ```{r}
-rs_driver_object <- rsDriver(
-  browser = "firefox",
-  port = free_port()
-)
+# fetches the number of pages for the selected time period i.e 1M, 5Y, MAX, etc
+get_num_pages <- function(html_page) {
+  buttons <- html_page %>% 
+             html_elements(xpath='//button[@class="pagination__page"]')
+  last_button <- tail(buttons, n=1L)
+  num_pages <- last_button %>% 
+              html_attr("data-page") %>% 
+              as.numeric()
+  return(num_pages)
+}
 ```
 
 
 ```{r}
-remDr <- rs_driver_object$client
-
-remDr$open()
-remDr$navigate('https://www.nasdaq.com/market-activity/stocks/aapl/historical')
-remDr$findElement(using='xpath', '//button[@aria-label="Click to show data for 6 months"]')$clickElement()
-
+times <- hash()
+times[["1M"]] <- "Click to show data for 1 month"
+times[["6M"]] <- "Click to show data for 6 months"
+times[["YTD"]] <- "Click to show data for year to date"
+times[["1Y"]] <- "Click to show data for 1 year"
+times[["5Y"]] <- "Click to show data for 5 years"
+times[["MAX"]] <- "Click to show maximum available data"
 ```
 
 ```{r}
-stocks.df <- remDr$getPageSource()[[1]] %>% 
-  read_html() %>%
-  html_table() %>% 
-  flatten() %>% 
-  data.frame()
+# create a data frame of the stock prices for the selected time period. later, add ticker column
+get_stock_prices <- function(ticker, time_period) {
+  url <- paste0("https://www.nasdaq.com/market-activity/stocks/",ticker,"/historical")
+  
+  # initialize client and go to NASDAQ historical site.
+  rs_driver_object <- rsDriver(
+    browser = "firefox",
+    port = free_port()
+  )
+  
+  remDr <- rs_driver_object$client
+
+  #remDr$open()
+  remDr$navigate(url)
+
+  
+  element <- paste0('//button[@aria-label="',times[[time_period]],'"]')
+  remDr$findElement(using='xpath', element)$clickElement()
+  
+  # get html page
+  html_page <- remDr$getPageSource()[[1]] %>% 
+               read_html()
+  
+  #get the number of pages to scrape
+  NUM_PAGES <- get_num_pages(html_page)
+  
+  stocks_prices <- data.frame()
+  
+  for (i in 1:NUM_PAGES) {
+    print(paste0("Scraping page ", i, " out of ", NUM_PAGES))
+    new_page_stocks <-remDr$getPageSource()[[1]] %>% 
+                        read_html() %>%
+                        html_table() %>% 
+                        flatten() %>% 
+                        data.frame()
+    print("A")
+    
+    stocks_prices <- stocks_prices %>% 
+                      rbind(new_page_stocks)
+    print("B")
+
+    #go to the next page to scrape more
+    remDr$findElement(using='xpath', '//button[@aria-label="click to go to the next page"]')$clickElement()  
+    print("C")
+    Sys.sleep(5)
+    print("D")
+  }
+  return(stocks_prices)
+}
+
 ```
+
+
+```{r}
+x <- get_stock_prices("aapl", "6M")
+```
+
+```{r}
+# write to csv
+write_csv(x, "stonks.csv")
+```
+
+
+
+
+
+
+
+
 
